@@ -7,9 +7,13 @@ a project to take and return task for a crawler server and manage datas
 
 
 this app can handle something like:
+
 1.crud request to done with crawler server 
+
 2.assign task to crawler 
+
 3.get response from crawler and save 
+
 
 !! make sure to install postgresql and mongodb on your system 
 
