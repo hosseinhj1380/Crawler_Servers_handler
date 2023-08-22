@@ -5,6 +5,8 @@
 
 a project to take and return task for a crawler server and manage datas 
 
+also generate and return response with graphql server to access any data you need 
+
 
 this app can handle something like:
 
