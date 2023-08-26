@@ -5,34 +5,21 @@ from schemes import (
     scheme_task_handler,
     scheme_response_username,
 )
-from models import model_search_username as models, model_get_content, model_mongo_db
 from dependencies import get_db
-
+from cruds.username_crud import UsernameCRUD
+import base64
+from fastapi.responses import JSONResponse
 
 router = APIRouter()
 
 
 # a POST endpoint for creating a topic
 @router.post("/search/username/")
-def create_topic(username: schemes.search_username, db: session = Depends(get_db)):
-    new_content_request = model_get_content.get_content(
-        statistic=username.statistic,
-        description=username.description,
-        comments=username.comments,
-        tags=username.tags,
-    )
-    task_handler = models.task_handler_username(
-        is_active=True, last_status="create task ", is_done=False, crawler_id=0
-    )
+def create_task(username: schemes.search_username, db: session = Depends(get_db)):
 
-    new_request = models.requests_model_search_username(
-        username=username.username,
-        quantity=username.quantity,
-        content=new_content_request,
-        task_handler=task_handler,
-    )
-    db.add(new_request)
-    db.commit()
+    obj = UsernameCRUD(db=db)
+    obj.create_task(username=username)
+
     # db.refresh(topic)
     return {"message": "Topic created successfully"}
 
@@ -43,139 +30,53 @@ def create_topic(username: schemes.search_username, db: session = Depends(get_db
 def create_task_handler_request(
     task: scheme_task_handler.task_handler, db: session = Depends(get_db)
 ):
-    responses = (
-        db.query(models.task_handler_username)
-        .filter(models.task_handler_username.is_active == 1)
-        .all()
-    )
+    obj = UsernameCRUD(db=db)
 
-    if responses:
-        try:
-            result = []
-            responses[0].crawler_id = task.crawler_id
-            responses[
-                0
-            ].last_status = f"define task to crwaler number {task.crawler_id}"
-            responses[0].is_active = False
+    query, content_query = obj.create_task_handler_request(task=task)
+    try:
+        result = []
 
-            db.commit()
+        result.append(
+            {
+                "username": query[0].username,
+                "task_handler_id": query[0].task_handler_id,
+                "statistic": content_query[0].statistic,
+                "comments": content_query[0].comments,
+                "description": content_query[0].description,
+                "tags": content_query[0].tags,
+                "quantity": query[0].quantity,
+            }
+        )
 
-            query = (
-                db.query(models.requests_model_search_username)
-                .filter(
-                    models.requests_model_search_username.task_handler_id
-                    == responses[0].id
-                )
-                .all()
-            )
+        return result
 
-            content_query = (
-                db.query(model_get_content.get_content)
-                .filter(model_get_content.get_content.id == query[0].content_id)
-                .all()
-            )
-
-            result.append(
-                {
-                    "username": query[0].username,
-                    "task_handler_id": query[0].task_handler_id,
-                    "statistic": content_query[0].statistic,
-                    "comments": content_query[0].comments,
-                    "description": content_query[0].description,
-                    "tags": content_query[0].tags,
-                    "quantity": query[0].quantity,
-                }
-            )
-
-            return result
-
-        except Exception as e:
-            print(e)
-
-    else:
-        return "no task to do "
+    except Exception as e:
+        return JSONResponse(status_code=204, content="not found ")
 
 
 # # # a GET endpoint for geting list of the undone topics
 @router.get("/search/username/", response_model=list[schemes.get_username])
 def get_search_username(db: session = Depends(get_db)):
-    get_request = db.query(models.requests_model_search_username).all()
-    return get_request
+
+    obj = UsernameCRUD(db=db)
+
+    return obj.get_data()
 
 
 # # a PUT endpoint for marking a topic as done
 @router.put("/search/username/{username_id}")
 def update_search_username(username_id: int, db: session = Depends(get_db)):
-    update_request = (
-        db.query(models.requests_model_search_username)
-        .filter(models.requests_model_search_username.id == username_id)
-        .first()
-    )
-    if update_request:
-        update_request.is_active = False
-        db.commit()
-        return {"message": "Topic updated successfully"}
-    else:
-        return {"message": "Topic not found"}
+
+    obj = UsernameCRUD(db=db)
+    return obj.update_data(username_id=username_id)
 
 
 # This endpoint deletes a specific search username task. It accepts an explore_id as a path parameter and deletes the corresponding task from the database.
-@router.delete("/search/username/delete/{explore_id}")
-def delete_search_username_request(explore_id: int, db: session = Depends(get_db)):
-    query = (
-        db.query(models.requests_model_search_username)
-        .filter(models.requests_model_search_username.id == explore_id)
-        .first()
-    )
-    if query:
-        db.delete(query)
+@router.delete("/search/username/delete/{username_id}")
+def delete_search_username_request(username_id: int, db: session = Depends(get_db)):
 
-        db.commit()
-        return "deleted succesfuly"
-    else:
-        return "no data found "
-
-
-# This endpoint creates a task handler request for explore tasks. It accepts a JSON body with the details of the task handler (such as crawler_id).
-#  It updates the first active explore task in the database with the provided crawler_id and returns the updated task.
-# @router.post('/explore/task/')
-# def create_task_handler_request(task: scheme_task_handler.task_handler, db: session = Depends(get_db)):
-
-#     responses=db.query(model_explore.task_handler_explore).filter(model_explore.task_handler_explore.is_active==1).all()
-
-#     if responses:
-#         try:
-#             result=[]
-#             responses[0].crawler_id=task.crawler_id
-#             responses[0].last_status=f'define task to crwaler number {task.crawler_id}'
-#             responses[0].is_active=False
-
-#             db.commit()
-
-#             query= db.query(model_explore.requests_model_explore).filter(model_explore.requests_model_explore.id==responses[0].id).all()
-#             content_query=db.query(model_get_content.get_content).filter(model_get_content.get_content.id==query[0].content_id).all()
-
-#             result.append(
-#                     {
-#                         "category":query[0].category,
-#                         "task_handler_id":query[0].task_handler_id,
-#                         "statistic":content_query[0].statistic,
-#                         "comments":content_query[0].comments,
-#                         "description":content_query[0].description,
-#                         "tags":content_query[0].tags,
-#                         "created_by":query[0].created_by,
-#                         "quantity":query[0].quantity
-
-#                     }
-#                 )
-
-#             return result
-#         except Exception as e :
-#             print(e)
-
-
-#     else:
-#         return "no task to do "
+    obj = UsernameCRUD(db=db)
+    return obj.update_data(username_id=username_id)
 
 
 # This endpoint accepts a list of responses from the crawler for search username tasks. For each response,
@@ -185,38 +86,38 @@ def take_response_from_crawler(
     responses: list[scheme_response_username.response_username],
     db: session = Depends(get_db),
 ):
+
+    result = []
+    obj = UsernameCRUD(db=db)
+
     if responses:
-        result = []
 
         for response in responses:
-            query = (
-                db.query(models.task_handler_username)
-                .filter(models.task_handler_username.id == response.task_handler_id)
-                .all()
-            )
-            query[
-                0
-            ].last_status = (
-                f"task completed succesfuly by crawler number  {response.crawler_id}"
-            )
-            query[0].is_done = True
-            db.commit()
-            result.append({"username": response.username, "content": response.content})
+            obj.response_handler_success(response=response)
 
-        model_mongo_db.collection.insert_many(result)
+            # for content in response.content:
+            #     decoded_video = base64.b64decode(content["video_url"])
 
-        return "ok"
+            #     with open(f'{content["link"]}.mp4', 'wb') as output_file:
+            #         output_file.write(decoded_video)
+
+            #     content["video_url"] = content["link"]
+
+            result.append({"username": response.username,
+                          "content": response.content})
+
+        obj.save_mongo(result=result)
+
+        return "responses saved succesfully "
 
     else:
-        query = (
-            db.query(models.task_handler_username)
-            .filter(models.task_handler_username.id == response.task_handler_id)
-            .all()
-        )
-        query[0].crawler_id = response.crawler_id
-        query[
-            0
-        ].last_status = f"task was failed by crawler number {response.crawler_id}"
-        query[0].is_active = True
-        db.commit()
-        return query
+
+        return JSONResponse(status_code=400, content="bad request  ")
+
+
+@router.post("/search/username/response/failed")
+def task_response_failed(response: scheme_response_username.ResponseFailed, db: session = (Depends(get_db))):
+
+    obj = UsernameCRUD(db=db)
+
+    return obj.response_handler_failed(responses=response)

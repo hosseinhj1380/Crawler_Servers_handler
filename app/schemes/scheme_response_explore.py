@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import List
 
 
 class response_explore(BaseModel):
@@ -7,11 +8,17 @@ class response_explore(BaseModel):
     category: str = None
     created_by: str = None
 
-    content: list
+
+    content: List[dict]
 
     class Config:
         from_attributes = True
 
+
+class ResponseFailed(BaseModel):
+    crawler_id: int
+    task_handler_id: int
+    reason:str
 
 # class get_username(search_username):
 #     id: int

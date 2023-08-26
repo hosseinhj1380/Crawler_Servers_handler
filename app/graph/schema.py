@@ -29,7 +29,7 @@ class Content:
     link: str
     description: str
     statistics: List[Statistic]
-    comments: list[Comments]
+    comments: List[Comments]
     tags: List[str]
     post_date: str
     video_url: str

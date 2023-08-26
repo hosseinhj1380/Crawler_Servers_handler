@@ -5,10 +5,10 @@ from sqlalchemy import pool
 
 from alembic import context
 
-from models.model_explore import requests_model_explore,task_handler_explore
-from models.model_search_tag import requests_model_search_tag,task_handler_tag
-from models.model_get_content import get_content
-from models.model_search_username import requests_model_search_username,task_handler_username
+from models.model_explore import RequesModelExplore,TaskHandlerExplore
+from models.model_search_tag import RequestModelSearchTag,TaskHandlerTag
+from models.model_get_content import GetContent
+from models.model_search_username import RequestModelSearchUsername,TaskHandlerUsername
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config

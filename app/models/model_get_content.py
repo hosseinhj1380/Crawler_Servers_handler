@@ -3,7 +3,7 @@ from sqlalchemy import Column, Integer, Boolean, String, ForeignKey
 from sqlalchemy.orm import relationship
 
 
-class get_content(Base):
+class GetContent(Base):
     __tablename__ = "app_get_content"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -12,8 +12,8 @@ class get_content(Base):
     comments = Column(Boolean)
     tags = Column(Boolean)
     # is_active=Column(Boolean)
-    explore = relationship("requests_model_explore", back_populates="get_content")
-    search_tag = relationship("requests_model_search_tag", back_populates="content")
+    explore = relationship("RequesModelExplore", back_populates="get_content")
+    search_tag = relationship("RequestModelSearchTag", back_populates="content")
     search_username = relationship(
-        "requests_model_search_username", back_populates="content"
+        "RequestModelSearchUsername", back_populates="content"
     )

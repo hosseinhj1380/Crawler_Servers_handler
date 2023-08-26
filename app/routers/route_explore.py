@@ -1,10 +1,13 @@
-from fastapi import Depends, APIRouter, HTTPException, status, Query
+from fastapi import Depends, APIRouter, Query, File, UploadFile
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import session
 from schemes import schemes_explore as schemes, scheme_response_explore
 from schemes import scheme_task_handler
-from models import model_explore, model_get_content, model_mongo_db
+
 from dependencies import get_db
+from typing import List
+import base64
+from cruds.explore_crud import CRUDexplore
 
 
 router = APIRouter()
@@ -19,26 +22,10 @@ router = APIRouter()
     description="this is an endpoint to create new task for crawler ",
 )
 def create_explore_request(explore: schemes.explore, db: session = Depends(get_db)):
-    new_content_request = model_get_content.get_content(
-        statistic=explore.statistic,
-        description=explore.description,
-        comments=explore.comments,
-        tags=explore.tags,
-    )
-    task_handler = model_explore.task_handler_explore(
-        is_active=True, last_status="define task ", is_done=False, crawler_id=0
-    )
-    new_request = model_explore.requests_model_explore(
-        category=explore.category,
-        quantity=explore.quantity,
-        created_by=explore.created_by,
-        get_content=new_content_request,
-        task_handler=task_handler,
-    )
 
-    db.add(new_request)
-    db.commit()
-    # db.refresh(explore)
+    obj = CRUDexplore(db=db)
+    obj.create_task(explore=explore)
+
     return {"message": "explore request created successfully"}
 
 
@@ -49,57 +36,30 @@ def create_explore_request(explore: schemes.explore, db: session = Depends(get_d
 def create_task_handler_request(
     task: scheme_task_handler.task_handler, db: session = Depends(get_db)
 ):
-    responses = (
-        db.query(model_explore.task_handler_explore)
-        .filter(model_explore.task_handler_explore.is_active == 1)
-        .all()
-    )
+    obj = CRUDexplore(db=db)
 
-    if responses:
-        try:
-            result = []
-            responses[0].crawler_id = task.crawler_id
-            responses[
-                0
-            ].last_status = f"define task to crwaler number {task.crawler_id}"
-            responses[0].is_active = False
+    try:
 
-            db.commit()
+        query, content_query = obj.create_task_handler(task=task)
 
-            query = (
-                db.query(model_explore.requests_model_explore)
-                .filter(
-                    model_explore.requests_model_explore.task_handler_id
-                    == responses[0].id
-                )
-                .all()
-            )
-            content_query = (
-                db.query(model_get_content.get_content)
-                .filter(model_get_content.get_content.id == query[0].content_id)
-                .all()
-            )
+        result = []
+        result.append(
+            {
+                "category": query[0].category,
+                "task_handler_id": query[0].task_handler_id,
+                "statistic": content_query[0].statistic,
+                "comments": content_query[0].comments,
+                "description": content_query[0].description,
+                "tags": content_query[0].tags,
+                "created_by": query[0].created_by,
+                "quantity": query[0].quantity,
+            }
+        )
 
-            result.append(
-                {
-                    "category": query[0].category,
-                    "task_handler_id": query[0].task_handler_id,
-                    "statistic": content_query[0].statistic,
-                    "comments": content_query[0].comments,
-                    "description": content_query[0].description,
-                    "tags": content_query[0].tags,
-                    "created_by": query[0].created_by,
-                    "quantity": query[0].quantity,
-                }
-            )
+        return result
 
-            return result
-
-        except Exception as e:
-            print(e)
-
-    else:
-        return JSONResponse(status_code=204, content=None)
+    except Exception as e:
+        return JSONResponse(status_code=204, content="not found ")
 
 
 # This endpoint accepts a list of responses from the crawler. For each response,
@@ -109,24 +69,22 @@ def take_response_from_crawler(
     responses: list[scheme_response_explore.response_explore],
     db: session = Depends(get_db),
 ):
+    obj = CRUDexplore(db=db)
     if responses:
-        result = []
 
+        result = []
         for response in responses:
-            query = (
-                db.query(model_explore.task_handler_explore)
-                .filter(
-                    model_explore.task_handler_explore.id == response.task_handler_id
-                )
-                .all()
-            )
-            query[
-                0
-            ].last_status = (
-                f"task completed succesfuly by crawler number  {response.crawler_id}"
-            )
-            query[0].is_done = True
-            db.commit()
+
+            obj.response_handler_success(response=response)
+
+            # for content in response.content:
+            #     decoded_video = base64.b64decode(content["video_url"])
+
+            #     with open(f'{content["link"]}.mp4', 'wb') as output_file:
+            #         output_file.write(decoded_video)
+
+            #     content["video_url"] = content["link"]
+
             result.append(
                 {
                     "category": response.category,
@@ -135,76 +93,58 @@ def take_response_from_crawler(
                 }
             )
 
-        model_mongo_db.collection.insert_many(result)
+            obj.save_mongo(result=result)
 
-        return "ok"
+        return "responses saved succesfully "
 
     else:
-        query = (
-            db.query(model_explore.task_handler_explore)
-            .filter(model_explore.task_handler_explore.id == response.task_handler_id)
-            .all()
-        )
-        query[0].crawler_id = response.crawler_id
-        query[
-            0
-        ].last_status = f"task was failed by crawler number {response.crawler_id}"
-        query[0].is_active = True
-        db.commit()
-        return query
+        return JSONResponse(status_code=400, content="bad request  ")
 
 
 # a GET endpoint for geting list of the undone explore task
 @router.get("/explore/", response_model=list[schemes.explore_get])
 def get_explore_request(db: session = Depends(get_db)):
-    result = db.query(model_explore.requests_model_explore).all()
-    return result
+    obj = CRUDexplore(db=db)
+
+    return obj.get_data()
 
 
 # a PUT endpoint for marking a explore task  as done
 @router.put("/explore/{explore_id}")
 def update_explore(explore_id: int, db: session = Depends(get_db)):
-    update_data = (
-        db.query(model_explore.requests_model_explore)
-        .filter(model_explore.requests_model_explore.id == explore_id)
-        .first()
-    )
 
-    if update_data:
-        update_data.is_active = 0
-        db.commit()
-        return {"message": "explore updated successfully"}
-    else:
-        return {
-            "message": "explore not found",
-        }
+    obj = CRUDexplore(db=db)
+    result = obj.put_data(explore_id=explore_id)
+    return result
 
 
 # This endpoint deletes a specific explore task. It accepts an explore_id as a path parameter and deletes the corresponding task from the database.
 @router.delete("/explore/delete/{explore_id}")
 def delete_explore_request(explore_id: int, db: session = Depends(get_db)):
-    query = (
-        db.query(model_explore.requests_model_explore)
-        .filter(model_explore.requests_model_explore.id == explore_id)
-        .first()
-    )
-    if query:
-        db.delete(query)
 
-        db.commit()
-        return "deleted succesfuly"
-    else:
-        return "no data found "
+    obj = CRUDexplore(db=db)
+
+    return obj.delete_data(explore_id=explore_id)
 
 
-@router.post("/test/")
-def create_comment(
-    comment_id: int = Query(
-        None,
-        title="title text",
-        description="Description Text !",
-        alias="CommentID",
-        deprecated=True,
-    )
-):
-    return {"comment_id": comment_id}
+@router.post("/explore/response/failed")
+def task_response_failed(response: scheme_response_explore.ResponseFailed, db: session = (Depends(get_db))):
+
+    obj = CRUDexplore(db=db)
+
+    return obj.response_handler_failed(responses=response)
+
+
+# @router.post("/upload/")
+# def upload_videos(files: List[UploadFile] = File(...)):
+#     try:
+#         for file in files:
+#             # Process each uploaded video file here (e.g., save to disk, analyze, etc.)
+#             # You can access the uploaded video's contents using `file.file`.
+#             # Replace the following line with your processing logic.
+#             # For now, let's just print the file name.
+#             print("Uploaded file:", file.filename)
+
+#         return JSONResponse(content={"message": "Video(s) uploaded successfully"})
+#     except Exception as e:
+#         return JSONResponse(content={"message": "An error occurred", "error": str(e)}, status_code=500)

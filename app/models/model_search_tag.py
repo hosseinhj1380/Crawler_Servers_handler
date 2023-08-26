@@ -3,7 +3,7 @@ from sqlalchemy import Column, Integer, Boolean, String, ForeignKey
 from sqlalchemy.orm import relationship
 
 
-class requests_model_search_tag(Base):
+class RequestModelSearchTag(Base):
     __tablename__ = "app_requests_model_search_tag"
 
     id = Column(Integer, primary_key=True)
@@ -13,11 +13,11 @@ class requests_model_search_tag(Base):
     quantity = Column(Integer)
     content_id = Column(Integer, ForeignKey("app_get_content.id"))
 
-    content = relationship("get_content", back_populates="search_tag")
-    task_handler = relationship("task_handler_tag", back_populates="search_tag")
+    content = relationship("GetContent", back_populates="search_tag")
+    task_handler = relationship("TaskHandlerTag", back_populates="search_tag")
 
 
-class task_handler_tag(Base):
+class TaskHandlerTag(Base):
     __tablename__ = "app_task_handler_tag"
     id = Column(Integer, primary_key=True, autoincrement=True)
     is_active = Column(Boolean)
@@ -26,5 +26,5 @@ class task_handler_tag(Base):
     is_done = Column(Boolean)
 
     search_tag = relationship(
-        "requests_model_search_tag", back_populates="task_handler"
+        "RequestModelSearchTag", back_populates="task_handler"
     )

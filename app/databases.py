@@ -7,12 +7,16 @@ from sqlalchemy.orm import sessionmaker
 
 
 # Connects to the SQLite database
-DATABASE_URL = "postgresql://postgres:postgres@localhost/TikTok_Api"
+DATABASE_URL = "postgresql://postgres:postgres@localhost/nothing"
 # engine = create_engine('')
 engine = create_engine(
     DATABASE_URL
 )
 SessionLocal = sessionmaker(bind=engine)
+# SQLALCHEMY_DATABASE_URL = 'sqlite:///./db.sqlite3'
+# # engine = create_engine('')
+# engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={'check_same_thread': False})
+# SessionLocal = sessionmaker(bind=engine)
 # session = Session()
 
 # class Base (DeclarativeBase):
