@@ -29,6 +29,13 @@ alembic upgrade head ``
 
 then run   ``main.py `` file and open ``127.0.0.1:8000/docs/``
 
+or if you have docker or docker-compose on your systems you can run this command instead 
+```docker-compose up -d --build ``` or with docker :
+```docker build -t  your_image_name:tag .```
+```docker run -d your_container_name -p 8000:8000 -p 7000:7000 your_image_name:tag```
+
+consider to have mongodb and postgres_db on your local pc when you wanna to run with command 
+or run with docker file 
 
 you need to have mongodb on your pc and put the correct value on file 
 `models/model_explore` to save datas 
