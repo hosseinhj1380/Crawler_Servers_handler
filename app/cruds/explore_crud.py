@@ -1,5 +1,6 @@
 from sqlalchemy.orm import session
-from models import model_explore, model_get_content, model_mongo_db
+from app.models import explore, get_content
+from app.models import mongo_db
 
 
 class CRUDexplore:
@@ -10,16 +11,16 @@ class CRUDexplore:
 
     def create_task(self, explore):
 
-        new_content_request = model_get_content.GetContent(
+        new_content_request = get_content.GetContent(
             statistic=explore.statistic,
             description=explore.description,
             comments=explore.comments,
             tags=explore.tags)
 
-        task_handler = model_explore.TaskHandlerExplore(
+        task_handler = explore.TaskHandlerExplore(
             is_active=True, last_status="define task ", is_done=False, crawler_id=0)
 
-        new_request = model_explore.RequesModelExplore(
+        new_request = explore.RequesModelExplore(
             category=explore.category,
             quantity=explore.quantity,
             created_by=explore.created_by,
@@ -33,8 +34,8 @@ class CRUDexplore:
     def create_task_handler(self, task):
 
         responses = (
-            self.db.query(model_explore.TaskHandlerExplore)
-            .filter(model_explore.TaskHandlerExplore.is_active == True)
+            self.db.query(explore.TaskHandlerExplore)
+            .filter(explore.TaskHandlerExplore.is_active == True)
             .all())
         if responses:
 
@@ -45,16 +46,16 @@ class CRUDexplore:
             self.db.commit()
 
             query = (
-                self.db.query(model_explore.RequesModelExplore)
+                self.db.query(explore.RequesModelExplore)
                 .filter(
-                    model_explore.RequesModelExplore.task_handler_id
+                    explore.RequesModelExplore.task_handler_id
                     == responses[0].id
                 )
                 .all()
             )
             content_query = (
-                self.db.query(model_get_content.GetContent)
-                .filter(model_get_content.GetContent.id == query[0].content_id)
+                self.db.query(get_content.GetContent)
+                .filter(get_content.GetContent.id == query[0].content_id)
                 .all()
             )
 
@@ -62,9 +63,9 @@ class CRUDexplore:
 
     def response_handler_success(self, response):
         query = (
-            self.db.query(model_explore.TaskHandlerExplore)
+            self.db.query(explore.TaskHandlerExplore)
             .filter(
-                model_explore.TaskHandlerExplore.id == response.task_handler_id
+                explore.TaskHandlerExplore.id == response.task_handler_id
             )
             .all()
         )
@@ -76,8 +77,8 @@ class CRUDexplore:
 
     def response_handler_failed(self, responses):
         query = (
-            self.db.query(model_explore.TaskHandlerExplore)
-            .filter(model_explore.TaskHandlerExplore.id == responses.task_handler_id)
+            self.db.query(explore.TaskHandlerExplore)
+            .filter(explore.TaskHandlerExplore.id == responses.task_handler_id)
             .all()
         )
         if query[0].crawler_id == responses.crawler_id:
@@ -88,15 +89,15 @@ class CRUDexplore:
 
     def save_mongo(self, result):
 
-        model_mongo_db.collection.insert_many(result)
+        mongo_db.collection.insert_many(result)
 
     def get_data(self):
-        return self.db.query(model_explore.RequesModelExplore).all()
+        return self.db.query(explore.RequesModelExplore).all()
 
     def put_data(self, explore_id):
 
-        update_data = (self.db.query(model_explore.RequesModelExplore)
-                       .filter(model_explore.RequesModelExplore.id == explore_id)
+        update_data = (self.db.query(explore.RequesModelExplore)
+                       .filter(explore.RequesModelExplore.id == explore_id)
                        .first())
         if update_data:
             update_data.is_active = False
@@ -109,8 +110,8 @@ class CRUDexplore:
 
     def delete_data(self, explore_id):
         query = (
-            self.db.query(model_explore.RequesModelExplore)
-            .filter(model_explore.RequesModelExplore.id == explore_id)
+            self.db.query(explore.RequesModelExplore)
+            .filter(explore.RequesModelExplore.id == explore_id)
             .first()
         )
         if query:

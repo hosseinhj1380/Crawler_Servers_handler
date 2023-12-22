@@ -1,4 +1,5 @@
-from models import model_search_username as models, model_get_content, model_mongo_db
+from app.models import get_content, mongo_db
+from app.models import search_username as models
 
 
 class UsernameCRUD:
@@ -6,7 +7,7 @@ class UsernameCRUD:
         self.db = db
 
     def create_task(self, username):
-        new_content_request = model_get_content.GetContent(
+        new_content_request = get_content.GetContent(
             statistic=username.statistic,
             description=username.description,
             comments=username.comments,
@@ -50,8 +51,8 @@ class UsernameCRUD:
             )
 
             content_query = (
-                self.db.query(model_get_content.GetContent)
-                .filter(model_get_content.GetContent.id == query[0].content_id)
+                self.db.query(get_content.GetContent)
+                .filter(get_content.GetContent.id == query[0].content_id)
                 .all()
             )
 
@@ -115,4 +116,4 @@ class UsernameCRUD:
         return "success "
 
     def save_mongo(self, result):
-        model_mongo_db.collection.insert_many(result)
+        mongo_db.collection.insert_many(result)

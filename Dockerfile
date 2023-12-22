@@ -17,4 +17,4 @@ EXPOSE 8000
 EXPOSE 7000
 
 # Start the first FastAPI app on port 8000
-CMD ["Python", "main.py"]
+CMD ["./start.sh"]
